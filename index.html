@@ -61,30 +61,34 @@
         <div class="row">
             <div class="col-md-3 sidebar">
                 <h4>Controls</h4>
-                <button id="loadPyodide" class="btn btn-custom w-100 mb-2">LOAD PYODIDE</button>
-                <button id="loadPandas" class="btn btn-custom w-100 mb-2" disabled>LOAD PANDAS</button>
-                <button id="loadPolars" class="btn btn-custom w-100 mb-2" disabled>LOAD POLARS</button>
-                <button id="loadMatplotlib" class="btn btn-custom w-100 mb-2" disabled>LOAD MATPLOTLIB</button>
+                <button id="loadDependencies" class="btn btn-custom w-100 mb-2">LOAD DEPENDENCIES</button>
                 <button id="loadMesa" class="btn btn-custom w-100 mb-2" disabled>LOAD MESA</button>
                 <button id="runGameModel" class="btn btn-success w-100 mb-2" disabled>RUN MODEL</button>
+                <div id="params" class="mt-3" style="display: none;">
+                    <h5>Parameters</h5>
+                    <div class="mb-2">
+                        <label class="form-label">Agents:</label>
+                        <input type="number" id="numAgents" class="form-control" value="100" min="10" max="1000">
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Cooperation: <span id="coopValue">0.5</span></label>
+                        <input type="range" id="coopProb" class="form-range" min="0" max="1" step="0.1" value="0.5">
+                    </div>
+                    <button id="updateModel" class="btn btn-sm btn-primary w-100">Update Model</button>
+                </div>
             </div>
 
-            <div class="col-md-6">
+            <div class="col-md-9">
                 <div class="output-container">
                     <h4>Visualization</h4>
                     <div id="visualization" class="text-center" style="height: 300px; background-color: #e9ecef; border-radius: 8px;"></div>               
                 </div>
+                <div class="output-container mt-3">
+                    <h4>Output</h4>
+                    <pre id="output"></pre>
+                    <pre id="error" class="text-danger"></pre>
+                </div>
             </div>              
-            <div id="params" style="display:none;">
-                <label>Agents: <input type="number" id="numAgents" value="100" min="10" max="1000"></label>
-                <label>Cooperation: <input type="range" id="coopProb" min="0" max="1" step="0.1" value="0.5"></label>
-                <button id="updateModel">Update</button>
-            </div>
-            <div class="output-container">
-                <h4>Output</h4>
-                <pre id="output"></pre>
-                <pre id="error" class="text-danger"></pre>
-            </div>
         </div>
     </div>
     <script>
@@ -93,99 +97,83 @@
             const error = document.getElementById('error');
             const viz = document.getElementById('visualization');
             let pyodide = null;
+            
+            // Update cooperation value display
+            document.getElementById('coopProb').addEventListener('input', function() {
+                document.getElementById('coopValue').textContent = this.value;
+            });
         
             // Helpers
             const log = msg => output.textContent += msg + '\n';
             const logError = err => error.textContent += `ERROR: ${err.message}\n`;
         
-            // 1. Load Pyodide
-            document.getElementById('loadPyodide').addEventListener('click', async () => {
+            // Load dependencies (Pyodide, Pandas, Polars, Matplotlib)
+            document.getElementById('loadDependencies').addEventListener('click', async () => {
                 try {
-                    log('Loading Pyodide...');
-                    const script = document.createElement('script');
-                    script.src = 'https://cdn.jsdelivr.net/pyodide/v0.27.4/full/pyodide.js';
-                    document.head.appendChild(script);
+                    log('Loading dependencies...');
                     
-                    await new Promise((resolve, reject) => {
-                        script.onload = resolve;
-                        script.onerror = () => reject(new Error('Pyodide load failed'));
-                    });
-        
+                    // Load Pyodide
+                    log('Loading Pyodide...');
                     pyodide = await loadPyodide();
-                    log('Pyodide loaded!');
-                    document.getElementById('loadPandas').disabled = false;
-                } catch(err) {
-                    logError(err);
-                }
-            });
-        
-            // 2. Load Pandas
-            document.getElementById('loadPandas').addEventListener('click', async () => {
-                try {
+                    log('✓ Pyodide loaded!');
+                    
+                    // Load Pandas
                     log('Loading Pandas...');
                     await pyodide.loadPackage('pandas');
-                    log('Pandas loaded!');
-                    document.getElementById('loadPolars').disabled = false;
-                } catch(err) {
-                    logError(err);
-                }
-            });
-        
-            // 3. Load Polars
-            document.getElementById('loadPolars').addEventListener('click', async () => {
-                try {
+                    log('✓ Pandas loaded!');
+                    
+                    // Load Polars
                     log('Loading Polars...');
                     await pyodide.loadPackage('micropip');
                     await pyodide.runPythonAsync(`
                         import micropip
                         await micropip.install('polars')
                     `);
-                    log('Polars loaded!');
-                    document.getElementById('loadMatplotlib').disabled = false;
-                } catch(err) {
-                    logError(err);
-                }
-            });
-        
-            // 4. Load Matplotlib
-            document.getElementById('loadMatplotlib').addEventListener('click', async () => {
-                try {
+                    log('✓ Polars loaded!');
+                    
+                    // Load Matplotlib
                     log('Loading Matplotlib...');
                     await pyodide.loadPackage('matplotlib');
                     await pyodide.runPythonAsync(`
                         import matplotlib
                         matplotlib.use('Agg')
                     `);
-                    log('Matplotlib ready!');
+                    log('✓ Matplotlib ready!');
+                    
+                    log('All dependencies successfully loaded!');
                     document.getElementById('loadMesa').disabled = false;
+                    document.getElementById('loadDependencies').disabled = true;
+                } catch(err) {
+                    logError(err);
+                }
+            });
+
+            // Load Mesa separately
+            document.getElementById('loadMesa').addEventListener('click', async () => {
+                try {
+                    log('Loading Mesa...');
+                    await pyodide.runPythonAsync(`
+                        import micropip
+                        await micropip.install('mesa')
+                    `);
+                    log('✓ Mesa loaded!');
+                    
+                    // Enable run button and show parameters
+                    document.getElementById('runGameModel').disabled = false;
+                    document.getElementById('loadMesa').disabled = true;
+                    document.getElementById('params').style.display = 'block';
                 } catch(err) {
                     logError(err);
                 }
             });
         
-            // 5. Load Mesa
-            document.getElementById('loadMesa').addEventListener('click', async () => {
-                // try {
-                    log('Loading Mesa...');
-                    await pyodide.loadPackage('micropip');
-                    await pyodide.runPythonAsync(`
-                        import micropip
-                        await micropip.install('mesa')
-                    `);
-                    log('Mesa loaded!');
-                    document.getElementById('runGameModel').disabled = false;
-                // } catch(err) {
-                //     logError(err);
-                // }
-            });
-        
-            // 6. Game Theory Model (Mesa 3.0+)
+            // Game Theory Model (Mesa 3.0+)
             document.getElementById('runGameModel').addEventListener('click', async () => {
                 try {
                     const numAgents = document.getElementById('numAgents').value;
                     const coopProb = document.getElementById('coopProb').value;
-                    document.getElementById('params').style.display = 'block';
-                    // document.getElementById('params').style.display = 'none'
+                    log(`Running model with ${numAgents} agents and ${coopProb} cooperation probability...`);
+                    
                     viz.innerHTML = await pyodide.runPythonAsync(`
                         import mesa
                         import matplotlib.pyplot as plt
@@ -252,9 +240,9 @@
                         img_str = base64.b64encode(buf.read()).decode()
                         plt.close()
                         
-                        f'<img src="data:image/png;base64,{img_str}" class="plot">'
+                        f'<img src="data:image/png;base64,{img_str}" class="plot" style="max-width:100%">'
                     `);
-                    log('Model executed!');
+                    log('Model executed successfully!');
                 } catch(err) {
                     logError(err);
                 }
@@ -265,6 +253,6 @@
                 document.getElementById('runGameModel').click();
             });
         });
-        </script>
+    </script>
 </body>
 </html>
