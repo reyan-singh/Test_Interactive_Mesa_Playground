@@ -42,6 +42,10 @@
             font-weight: 600;
             letter-spacing: 0.5px;
         }
+        .btn-success:disabled {
+            background-color: #cccccc !important;
+            color: #666666;
+        }
         .output-container {
             background-color: white;
             padding: 20px;
@@ -61,8 +65,7 @@
         <div class="row">
             <div class="col-md-3 sidebar">
                 <h4>Controls</h4>
-                <button id="loadDependencies" class="btn btn-custom w-100 mb-2">LOAD DEPENDENCIES</button>
-                <button id="loadMesa" class="btn btn-custom w-100 mb-2" disabled>LOAD MESA</button>
+                <button id="loadAll" class="btn btn-custom w-100 mb-2">LOAD MESA</button>
                 <button id="runGameModel" class="btn btn-success w-100 mb-2" disabled>RUN MODEL</button>
                 <div id="params" class="mt-3" style="display: none;">
                     <h5>Parameters</h5>
@@ -107,10 +110,10 @@
             const log = msg => output.textContent += msg + '\n';
             const logError = err => error.textContent += `ERROR: ${err.message}\n`;
         
-            // Load dependencies (Pyodide, Pandas, Polars, Matplotlib)
-            document.getElementById('loadDependencies').addEventListener('click', async () => {
+            // Load all libraries including Mesa
+            document.getElementById('loadAll').addEventListener('click', async () => {
                 try {
-                    log('Loading dependencies...');
+                    log('Loading all libraries...');
                     
                     // Load Pyodide
                     log('Loading Pyodide...');
@@ -138,19 +141,9 @@
                         import matplotlib
                         matplotlib.use('Agg')
                     `);
-                    log('✓ Matplotlib ready!');
+                    log('✓ Matplotlib loaded!');
                     
-                    log('All dependencies successfully loaded!');
-                    document.getElementById('loadMesa').disabled = false;
-                    document.getElementById('loadDependencies').disabled = true;
-                } catch(err) {
-                    logError(err);
-                }
-            });
-
-            // Load Mesa separately
-            document.getElementById('loadMesa').addEventListener('click', async () => {
-                try {
+                    // Load Mesa
                     log('Loading Mesa...');
                     await pyodide.runPythonAsync(`
                         import micropip
@@ -158,9 +151,11 @@
                     `);
                     log('✓ Mesa loaded!');
                     
+                    log('All libraries successfully loaded!');
+                    
                     // Enable run button and show parameters
                     document.getElementById('runGameModel').disabled = false;
-                    document.getElementById('loadMesa').disabled = true;
+                    document.getElementById('loadAll').disabled = true;
                     document.getElementById('params').style.display = 'block';
                 } catch(err) {
                     logError(err);
